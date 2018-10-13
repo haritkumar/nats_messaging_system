@@ -1,0 +1,1 @@
+docker build -t nats-server -f Dockerfile.server .
