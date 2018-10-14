@@ -46,9 +46,9 @@ def main():
     sid = yield nc.subscribe("foo", cb=message_handler)
 
     # Stop receiving after 2 messages.
-    yield nc.auto_unsubscribe(sid, 2)
-    yield nc.publish("foo", b'Hello')
-    yield nc.publish("foo", b'World')
+    #yield nc.auto_unsubscribe(sid, 3)
+    for x in range(10000):
+        yield nc.publish("foo", b'Hello '+str(x))
     yield nc.publish("foo", b'!!!!!')
 
     # Request/Response
@@ -63,7 +63,7 @@ def main():
     try:
         # Send a request and expect a single response
         # and trigger timeout if not faster than 200 ms.
-        msg = yield nc.request("help", b"Hi, need help!", timeout=0.2)
+        msg = yield nc.request("help", b"Hi, need help!", timeout=2)
         print("[Response]: %s" % msg.data)
     except tornado.gen.TimeoutError:
         print("Timeout!")
