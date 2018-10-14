@@ -11,6 +11,74 @@ NATS provides a lightweight server that is written in the Go programming languag
 docker run -p 4222:4222 -p 8222:8222 -p 6222:6222 haritkumar/nats-server
 ```
 
+### Python using Tornado 4.2+ client
+Install nats-client
+
+```sh
+python -m pip install nats-client
+
+Run
+python client.py
+```
+
+**client.py**
+
+```python
+import tornado.ioloop
+import tornado.gen
+import time
+from nats.io.client import Client as NATS
+
+@tornado.gen.coroutine
+def main():
+    nc = NATS()
+
+    # Establish connection to the server.
+    yield nc.connect("nats://localhost:4222")
+
+    @tornado.gen.coroutine
+    def message_handler(msg):
+        subject = msg.subject
+        data = msg.data
+        print("[Received on '{}'] : {}".format(subject, data.decode()))
+
+    # Simple async subscriber
+    sid = yield nc.subscribe("foo", cb=message_handler)
+
+    # Stop receiving after 2 messages.
+    yield nc.auto_unsubscribe(sid, 2)
+    yield nc.publish("foo", b'Hello')
+    yield nc.publish("foo", b'World')
+    yield nc.publish("foo", b'!!!!!')
+
+    # Request/Response
+    @tornado.gen.coroutine
+    def help_request_handler(msg):
+        print("[Received on '{}']: {}".format(msg.subject, msg.data))
+        yield nc.publish(msg.reply, "OK, I can help!")
+
+    # Susbcription using distributed queue named 'workers'
+    sid = yield nc.subscribe("help", "workers", help_request_handler)
+
+    try:
+        # Send a request and expect a single response
+        # and trigger timeout if not faster than 200 ms.
+        msg = yield nc.request("help", b"Hi, need help!", timeout=0.2)
+        print("[Response]: %s" % msg.data)
+    except tornado.gen.TimeoutError:
+        print("Timeout!")
+
+    # Remove interest in subscription.
+    yield nc.unsubscribe(sid)
+
+    # Terminate connection to NATS.
+    yield nc.close()
+
+if __name__ == '__main__':
+    tornado.ioloop.IOLoop.current().run_sync(main)
+```
+
+
 ### NATS design goals
 The core principles underlying NATS are performance, scalability, and ease-of-use. Based on these principles, NATS is designed around the following core features:
 
